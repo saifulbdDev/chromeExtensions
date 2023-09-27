@@ -1,0 +1,9 @@
+{
+    "version": 3,
+    "mappings": "AAEA,AAAA,EAAE;AACF,EAAE;AACF,EAAE;AACF,EAAE;AACF,EAAE;AACF,EAAE,CAAC;EACD,KAAK,EARG,GAAG;CASZ",
+    "sources": [
+        "Newtab.scss"
+    ],
+    "names": [],
+    "file": "Newtab.css"
+}
