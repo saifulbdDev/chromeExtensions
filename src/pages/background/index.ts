@@ -13,6 +13,7 @@ reloadOnUpdate("pages/content/style.scss");
 // Function to generate a unique identifier for a URL
 function generateUniqueId(url: string) {
   const domain = new URL(url).hostname;
+
   return domain;
 }
 
@@ -20,19 +21,26 @@ function generateUniqueId(url: string) {
 function getCurrentTabUrl(callback: (url: string | undefined) => void) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const tab = tabs[0];
-    const url = tab?.url;
+    const url = tab?.url ? generateUniqueId(tab?.url) : "";
     callback(url);
   });
 }
+function isDomain(arg: string) {
+  let regexDomain = /^\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+  if (arg.match(regexDomain)) {
+    return true;
+  } else {
+    return false;
+  }
+}
 // Function to update visited URLs in storage
 function updateVisitedUrls(url: string) {
-  const uniqueId = generateUniqueId(url);
-  chrome.storage.local.get('visitedUrls', (result) => {
+  chrome.storage.local.get("visitedUrls", (result) => {
     const visitedUrls: string[] = result.visitedUrls || [];
 
     // Check if the URL is already in the list
-    if (!visitedUrls.includes(uniqueId)) {
-      visitedUrls.push(uniqueId);
+    if (!visitedUrls.includes(url) && isDomain(url)) {
+      visitedUrls.push(url);
       chrome.storage.local.set({ visitedUrls });
     }
   });
@@ -40,14 +48,17 @@ function updateVisitedUrls(url: string) {
 
 // Listener for tab changes (when a new URL is visited)
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
-  if (changeInfo.status === 'complete') {
+  if (changeInfo.status === "complete") {
     getCurrentTabUrl((url) => {
       if (url) {
         updateVisitedUrls(url);
         // Notify the content script about the visited page
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]) {
-            chrome.tabs.sendMessage(tabs[0].id as number, { action: 'visitedPage', url });
+          if (tabs[0]?.id) {
+            chrome.tabs.sendMessage(tabs[0].id as number, {
+              action: "visitedPage",
+              url,
+            });
           }
         });
       }
@@ -55,22 +66,25 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
   }
 });
 
-// Listener for removing a URL
-chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-      console.log(message.url, "visitedUrls from background");
-  if (message.action === 'removeUrl') {
-    const urlToRemove = message.url;
-    const uniqueIdToRemove = generateUniqueId(urlToRemove);
-    chrome.storage.local.get('visitedUrls', (result) => {
-      const visitedUrls: string[] = result.visitedUrls || [];
-       console.log(visitedUrls,  message.url, "visitedUrls from background");
-      const updatedUrls = visitedUrls.filter((id) => id !== uniqueIdToRemove);
-      chrome.storage.local.set({ visitedUrls: updatedUrls });
-    });
-  }
-});
 
 // Initialize visited URLs storage when the extension is installed or updated
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ visitedUrls: [] });
 });
+// Listener for removing a URL
+chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
+  if (message.action === "removeUrl") {
+    removeElement();
+  }
+});
+
+function removeElement() {
+  // Replace this with your logic to remove the element
+  const elementToRemove = document.getElementById("chrome-extension");
+  if (elementToRemove) {
+    elementToRemove.remove();
+    console.log("Element removed successfully");
+  } else {
+    console.warn("Element not found for removal");
+  }
+}
